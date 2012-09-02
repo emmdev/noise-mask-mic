@@ -9,6 +9,7 @@
 #define LDAC_PIN        P1OUT_bit.P2
 
 void write_DAC(unsigned int);
+unsigned int read_ADC( void );
 
 int main( void )
 {
@@ -17,6 +18,7 @@ int main( void )
 
   P1DIR |= (1 << 0) + (1 << 2) + (1 << 4) + (1 << 5) + (1 << 6); // Set P1.0, etc to output direction
   P1SEL &= ~( (1 << 0) + (1 << 2) + (1 << 4) + (1 << 5) + (1 << 6) ); //Select pins as IOs
+  P1SEL |= (1 << 1); //Set P1.1 as peripheral (for ADC channel A1)
 
   //start
   CS_PIN = 1;
@@ -36,7 +38,9 @@ int main( void )
     while (i != 0);
     
     //new DAC update
-    write_DAC( (0x7 << 12) + 2000 );
+    unsigned int test = read_ADC();
+    test <<= 2;
+    write_DAC( (0x7 << 12) + test );
   }
 
 }
@@ -54,4 +58,19 @@ void write_DAC( unsigned int data_out )
   LDAC_PIN = 0;
   __delay_cycles(10);
   LDAC_PIN = 1;
+}
+
+unsigned int read_ADC()
+{
+  ADC10CTL0 &= ~ENC;				// Disable ADC
+//  ADC10CTL0 = ADC10SHT_2 + ADC10ON;     	// 16 clock ticks, ADC On
+  ADC10CTL0 = ADC10SHT_3 + ADC10ON;     	// 64 clock ticks, ADC On
+  ADC10CTL1 = ADC10SSEL_3 + INCH_1;		// Set chan to INCH_1, SMCLK
+  ADC10CTL0 |= ENC + ADC10SC;             	// Enable and start conversion
+
+  while (ADC10CTL0 & ADC10IFG == 0) {
+    __delay_cycles(1);
+  }
+  
+  return ADC10MEM;			// Saves measured value.
 }

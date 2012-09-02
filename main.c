@@ -8,6 +8,8 @@
 #define MOSI_PIN        P1OUT_bit.P6
 #define LDAC_PIN        P1OUT_bit.P2
 
+void write_DAC(unsigned int);
+
 int main( void )
 {
   // Stop watchdog timer to prevent time out reset
@@ -34,20 +36,22 @@ int main( void )
     while (i != 0);
     
     //new DAC update
-    unsigned int data_out = (0x7 << 12) + 2000;
-    CS_PIN = 0;    
-    for (unsigned int mask = 0x8000; mask > 0; mask >>= 1) {
-      MOSI_PIN = (data_out & mask) ? 1 : 0;
-//    for (unsigned char i = 0; i < 16; i++) {
-//      MOSI_PIN = data_out
-      SCK_PIN = 1;
-      __delay_cycles(100);
-      SCK_PIN = 0;
-    }
-    CS_PIN = 1;
-    LDAC_PIN = 0;
-    __delay_cycles(100);
-    LDAC_PIN = 1;
+    write_DAC( (0x7 << 12) + 2000 );
   }
 
+}
+
+void write_DAC( unsigned int data_out )
+{
+  CS_PIN = 0;    
+  for (unsigned int mask = 0x8000; mask > 0; mask >>= 1) {
+    MOSI_PIN = (data_out & mask) ? 1 : 0;
+    SCK_PIN = 1;
+    __delay_cycles(10);
+    SCK_PIN = 0;
+  }
+  CS_PIN = 1;
+  LDAC_PIN = 0;
+  __delay_cycles(10);
+  LDAC_PIN = 1;
 }

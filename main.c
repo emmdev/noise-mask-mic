@@ -52,7 +52,7 @@ int main( void )
 
       test = simul_ADCDAC( (0x7 << 12) + 0xfff );
       
-      LED_PIN = (test > 500) ? 1 : 0;
+      LED_PIN = (test > 1000) ? 1 : 0;
     } else {
       write_DAC( (0x7 << 12) + 0x000 );
     }
@@ -111,7 +111,7 @@ unsigned int simul_ADCDAC( unsigned int data_out )
   //trigger ADC
   ADC10CTL0 |= ENC + ADC10SC;             	// Enable and start conversion
   
-  __delay_cycles(9);
+  __delay_cycles(5);
   
   //trigger DAC
   LDAC_PIN = 0;

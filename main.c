@@ -8,8 +8,10 @@
 #define MOSI_PIN        P1OUT_bit.P6
 #define LDAC_PIN        P1OUT_bit.P2
 
-void write_DAC(unsigned int);
+void write_DAC( unsigned int );
 unsigned int read_ADC( void );
+
+unsigned int simul_ADCDAC( unsigned int );
 
 int main( void )
 {
@@ -25,22 +27,35 @@ int main( void )
   SCK_PIN = 0;
   MOSI_PIN = 0;
   LDAC_PIN = 1;
-    
+  
+  char toggle;
+  unsigned int  test;
+  
   for (;;)
   {
     volatile unsigned int i;            // volatile to prevent optimization
 
-//    P1OUT ^= 0x01;                      // Toggle P1.0 using exclusive-OR
-    LED_PIN ^= 1;
+    toggle ^= 1;
     
     i = 20000;                          // SW Delay
     do i--;
     while (i != 0);
-    
+/*    
     //new DAC update
-    unsigned int test = read_ADC();
+    test = read_ADC();
     test <<= 2;
-    write_DAC( (0x7 << 12) + test );
+    write_DAC( (0x7 << 12) + test );*/
+    
+    if (toggle == 1) {
+//      write_DAC( (0x7 << 12) + 0xfff );
+//      test = read_ADC();
+
+      test = simul_ADCDAC( (0x7 << 12) + 0xfff );
+      
+      LED_PIN = (test > 500) ? 1 : 0;
+    } else {
+      write_DAC( (0x7 << 12) + 0x000 );
+    }
   }
 
 }
@@ -63,8 +78,8 @@ void write_DAC( unsigned int data_out )
 unsigned int read_ADC()
 {
   ADC10CTL0 &= ~ENC;				// Disable ADC
-//  ADC10CTL0 = ADC10SHT_2 + ADC10ON;     	// 16 clock ticks, ADC On
-  ADC10CTL0 = ADC10SHT_3 + ADC10ON;     	// 64 clock ticks, ADC On
+  ADC10CTL0 = ADC10SHT_2 + ADC10ON;     	// 16 clock ticks, ADC On
+//  ADC10CTL0 = ADC10SHT_3 + ADC10ON;     	// 64 clock ticks, ADC On
   ADC10CTL1 = ADC10SSEL_3 + INCH_1;		// Set chan to INCH_1, SMCLK
   ADC10CTL0 |= ENC + ADC10SC;             	// Enable and start conversion
 
@@ -73,4 +88,41 @@ unsigned int read_ADC()
   }
   
   return ADC10MEM;			// Saves measured value.
+}
+
+unsigned int simul_ADCDAC( unsigned int data_out )
+{
+  //init DAC
+  CS_PIN = 0;    
+  for (unsigned int mask = 0x8000; mask > 0; mask >>= 1) {
+    MOSI_PIN = (data_out & mask) ? 1 : 0;
+    SCK_PIN = 1;
+    __delay_cycles(10);
+    SCK_PIN = 0;
+  }
+  CS_PIN = 1;
+  
+  //init ADC
+  ADC10CTL0 &= ~ENC;				// Disable ADC
+  ADC10CTL0 = ADC10SHT_2 + ADC10ON;     	// 16 clock ticks, ADC On
+//  ADC10CTL0 = ADC10SHT_3 + ADC10ON;     	// 64 clock ticks, ADC On
+  ADC10CTL1 = ADC10SSEL_3 + INCH_1;		// Set chan to INCH_1, SMCLK
+
+  //trigger ADC
+  ADC10CTL0 |= ENC + ADC10SC;             	// Enable and start conversion
+  
+  __delay_cycles(9);
+  
+  //trigger DAC
+  LDAC_PIN = 0;
+  
+  //get ADC result
+  while (ADC10CTL0 & ADC10IFG == 0) {
+    __delay_cycles(1);
+  }
+  
+  LDAC_PIN = 1;
+  
+  //return ADC result
+  return ADC10MEM;
 }

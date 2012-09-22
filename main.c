@@ -13,6 +13,9 @@ unsigned int read_ADC( void );
 
 unsigned int simul_ADCDAC( unsigned int );
 
+unsigned int timerCount = 0;
+char toggle = 0;
+
 int main( void )
 {
   // Stop watchdog timer to prevent time out reset
@@ -28,7 +31,11 @@ int main( void )
   MOSI_PIN = 0;
   LDAC_PIN = 1;
   
-  char toggle;
+  TACCTL0 = CCIE;
+  TACTL = TASSEL_2 + MC_2; // Set the timer A to SMCLCK, Continuous
+  
+  __bis_SR_register(LPM0_bits + GIE); // Enter LPM0 w/ interrupts
+  
   unsigned int  test;
   
   for (;;)
@@ -58,6 +65,17 @@ int main( void )
     }
   }
 
+}
+
+// Timer A0 interrupt service routine
+#pragma vector=TIMERA0_VECTOR
+__interrupt void Timer_A (void)
+{
+  timerCount = (timerCount + 1) % 8;
+  if(timerCount == 0) {
+    toggle ^= 1;
+    LED_PIN = (toggle == 1) ? 1 : 0;
+  }
 }
 
 void write_DAC( unsigned int data_out )
@@ -111,6 +129,10 @@ unsigned int simul_ADCDAC( unsigned int data_out )
   //trigger ADC
   ADC10CTL0 |= ENC + ADC10SC;             	// Enable and start conversion
   
+  /* delay of 5 chosen so that ADC samples after DAC settles fully
+  test for DAC settling: DAC was set to 0x000, now set to 0xfff, waiting until
+  ADC measures > 1000 (out of 1023)
+  */
   __delay_cycles(5);
   
   //trigger DAC

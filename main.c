@@ -32,7 +32,8 @@ int main( void )
   LDAC_PIN = 1;
   
   TACCTL0 = CCIE;
-  TACTL = TASSEL_2 + MC_2; // Set the timer A to SMCLCK, Continuous
+  TACTL = TASSEL_2 + MC_1; // Set the timer A to SMCLCK, Up to CCR0
+  TACCR0 = 125 ; // 8kHz -> 1MHz/8kHz = 125
   
   __bis_SR_register(LPM0_bits + GIE); // Enter LPM0 w/ interrupts
   
@@ -71,11 +72,12 @@ int main( void )
 #pragma vector=TIMERA0_VECTOR
 __interrupt void Timer_A (void)
 {
-  timerCount = (timerCount + 1) % 8;
-  if(timerCount == 0) {
+//  timerCount = (timerCount + 1) % 8;
+//  if(timerCount == 0) {
     toggle ^= 1;
     LED_PIN = (toggle == 1) ? 1 : 0;
-  }
+//  }
+
 }
 
 void write_DAC( unsigned int data_out )

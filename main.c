@@ -33,7 +33,7 @@ int main( void )
   
   TACCTL0 = CCIE;
   TACTL = TASSEL_2 + MC_1; // Set the timer A to SMCLCK, Up to CCR0
-  TACCR0 = 125 ; // 8kHz -> 1MHz/8kHz = 125
+  TACCR0 = 250 ; // 8kHz -> 1MHz/8kHz = 125
   
   __bis_SR_register(LPM0_bits + GIE); // Enter LPM0 w/ interrupts
   
@@ -72,26 +72,26 @@ int main( void )
 #pragma vector=TIMERA0_VECTOR
 __interrupt void Timer_A (void)
 {
-//  timerCount = (timerCount + 1) % 8;
-//  if(timerCount == 0) {
-    toggle ^= 1;
-    LED_PIN = (toggle == 1) ? 1 : 0;
-//  }
+  timerCount++;
+  if (timerCount >= 40) {
+    timerCount = 0;
+  }
 
+  write_DAC( (0x7 << 12) + (timerCount << 6) );
 }
 
 void write_DAC( unsigned int data_out )
 {
-  CS_PIN = 0;    
+  CS_PIN = 0;
   for (unsigned int mask = 0x8000; mask > 0; mask >>= 1) {
     MOSI_PIN = (data_out & mask) ? 1 : 0;
     SCK_PIN = 1;
-    __delay_cycles(10);
+//    __delay_cycles(1);
     SCK_PIN = 0;
   }
   CS_PIN = 1;
   LDAC_PIN = 0;
-  __delay_cycles(10);
+//  __delay_cycles(1);
   LDAC_PIN = 1;
 }
 
